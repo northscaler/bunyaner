@@ -59,7 +59,7 @@ If you use deferred logging, like `log.debug(() => somethingExpensive())`, remem
 
 ### Use aspects for tracing
 Combine AOP from [@northscaler/aspectify](https://www.npmjs.com/package/@northscaler/aspectify) with this library's deferred logging to do automated, efficient and unobstrusive tracing.
-Here's an exmaple that logs inputs as well as happy & saddy path outputs:
+Here's an example that logs inputs as well as happy & saddy path outputs:
 ```javascript
 // in file tracer.js
 const { AsyncAround } = require('@northscaler/aspectify')
@@ -96,7 +96,7 @@ const tracer = async ({ thisJoinPoint }) => {
   }
 }
  
-module.exports = AsyncAround(logError)
+module.exports = AsyncAround(tracer)
 ```
 
 Now use it:
