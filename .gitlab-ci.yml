@@ -1,0 +1,34 @@
+.authenticate-to-npmjs:
+  - &authenticate-to-npmjs |
+    echo "$NPM_SCOPE:registry=https://$NPM_REGISTRY_HOST/" >> ~/.npmrc
+    echo "//$NPM_REGISTRY_HOST/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+
+image: node:8.6.0-alpine
+
+cache:
+  paths:
+    - node_modules/
+
+before_script:
+  - node --version
+  - npm --version
+
+stages:
+  - build
+  - publish
+
+build:
+  stage: build
+  script:
+    - npm run build
+
+publish:
+  stage: publish
+  script:
+    - *authenticate-to-npmjs
+    - npm run make-distribution
+    - export RM_TMP_TAG=cicd-$(date +%s)
+    - npm publish --access public --tag $RM_TMP_TAG
+    - ./tag-nodejs
+  only:
+    - /^\d+\.\d+\.\d+(\-[^\.]+\.\d+)?$/
