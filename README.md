@@ -30,7 +30,7 @@ const log = require('./log')
 let gameState = log.info({
   game: 'zork',
   player: 'querky123'
-}) // logs state object & returns it
+}) // logs { ..., "payload": { "game": "zork", "player": "querky123" }, ... } & returns object
 
 // ...querky123 plays game to level 5...
 
@@ -38,16 +38,19 @@ gameState = log.info({
   game: 'zork',
   player: 'querky123',
   level: 5 // <- conflicts with bunyan core logging field, but no matter!
-}) // logs gameState as { object: gameState } & returns gameState
+}) // logs { ..., "payload": { "game": "zork", ..., "level": 5 }, ... } & returns object
 
 if (gameState.badness) {
   // log method logs given error, then returns it so it can be thrown
   throw log.error(new Error('boom'))
-}
+} // logs { ..., "isError": true, "payload": { "message": "boom", "stack": ... }, ... } & returns the error object
 
-// don't do calculations if your logging level is higher than your method's level
-// because they'll be ignored anyway
-log.debug(() => `foo: ${somethingExpensive()}, bar: ${somethingAlsoExpensive()}`)
+// don't do calculations if your logging level is higher than
+// your method's level by putting whatever's logged inside a function:
+log.debug(() => `foo: ${somethingExpensive()}`)
+
+// if log.level is > debug, somethingExpensive() is never called;
+// it only gets called if log.level <= debug
 ```
 ## Tips
 
