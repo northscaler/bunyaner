@@ -66,31 +66,27 @@ const { AsyncAround } = require('@northscaler/aspectify')
 const log = require('./.../log.js') // as above
  
 const tracer = async ({ thisJoinPoint }) => {
-  let start = Date.now()
+  const start = Date.now()
 
-  let retval
   try {
     const returned = await thisJoinPoint.proceed()
-
-    // the function given here only gets evaluated if log.level <= debug
-    // so there's almost no performance penalty when logging above debug
-    log.debug(() => {
+    log.debug(() => ({
       clazz: thisJoinPoint.clazz.name,
       method: thisJoinPoint.fullName,
       args: thisJoinPoint.args,
       returned,
       elapsed: Date.now() - start
-    })
+    }))
 
     return returned
   } catch (e) {
-    log.error(() => {
+    log.error(() => ({
       clazz: thisJoinPoint.clazz.name,
       method: thisJoinPoint.fullName,
       args: thisJoinPoint.args,
       threw: e,
       elapsed: Date.now() - start
-    })
+    }))
 
     throw e
   }
