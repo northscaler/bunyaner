@@ -16,7 +16,7 @@
     "node": ">=8.0.0"
   },
   "scripts": {
-    "build": "npm install && npm test",
+    "build": "npm install && ./test-all-bunyan-versions.sh",
     "unit-integration": "nyc --check-coverage -x 'src/test' --exclude-after-remap false mocha 'src/test/unit/**/*.spec.js' 'src/test/integration/**/*.spec.js'",
     "integration": "nyc --check-coverage -x 'src/test' --exclude-after-remap false mocha 'src/test/integration/**/*.spec.js'",
     "i": "mocha 'src/test/integration/**/*.spec.js'",
@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "acorn": "7.1.1",
-    "bunyan": "1.1.1",
+    "bunyan": "2.0.2",
     "chai": "4.2.0",
     "copyfiles": "2.2.0",
     "dirty-chai": "2.0.1",
