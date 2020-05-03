@@ -7,10 +7,11 @@ chai.use(require('dirty-chai'))
 const expect = chai.expect
 const intercept = require('intercept-stdout')
 const bunyan = require('bunyan')
+const nodeMajorVersion = process.versions.node.split('.')[0]
 
 const getLog = require('./log.js')
 
-describe('unit tests of logger', function () {
+describe('integration tests of bunyaner', function () {
   let unintercept
   let stdout
 
@@ -156,7 +157,7 @@ describe('unit tests of logger', function () {
   it('should work with a formatting string', function () {
     const format = 'format %s'
     const object = { an: 'object' }
-    const expected = util.format(format, object)
+    const expected = nodeMajorVersion >= 12 ? 'format [ [Object] ]' : util.format(format, object)
     const log = getLog()
 
     const actual = log.info(format, object)
@@ -194,7 +195,7 @@ describe('unit tests of logger', function () {
     const obj = { foo: 'foo' }
     const format = 'format %s'
     const args = [format, obj]
-    const expected = util.format(format, obj)
+    const expected = nodeMajorVersion >= 12 ? 'format [ [Object] ]' : util.format(format, object)
     const log = getLog()
 
     const actual = log.info(() => args)
