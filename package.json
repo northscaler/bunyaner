@@ -18,14 +18,13 @@
   "scripts": {
     "build": "npm install && npm test",
     "unit-integration": "nyc --check-coverage -x 'src/test' --exclude-after-remap false mocha 'src/test/unit/**/*.spec.js' 'src/test/integration/**/*.spec.js'",
-    "postunit-integration": "run-s report",
     "integration": "nyc --check-coverage -x 'src/test' --exclude-after-remap false mocha 'src/test/integration/**/*.spec.js'",
-    "postintegration": "run-s report",
-    "i": "mocha 'src/test/integration/**/*.spec.js' | npx bunyan",
+    "i": "mocha 'src/test/integration/**/*.spec.js'",
     "unit": "nyc --check-coverage -x 'src/test' --exclude-after-remap false mocha 'src/test/unit/**/*.spec.js'",
-    "postunit": "run-s report",
-    "u": "mocha 'src/test/unit/**/*.spec.js' | npx bunyan",
-    "test": "run-s unit-integration lint",
+    "u": "mocha 'src/test/unit/**/*.spec.js'",
+    "test-all-bunyan-versions": "./test-all-bunyan-versions.sh",
+    "test": "run-s unit-integration",
+    "posttest": "run-s lint",
     "report": "nyc report --reporter=html",
     "cov": "open coverage/index.html",
     "lint": "standard --verbose 'src/**/*.js'",
@@ -37,12 +36,16 @@
   "publishConfig": {
     "access": "public"
   },
+  "peerDependencies": {
+    "bunyan": ">=1.0.0"
+  },
   "devDependencies": {
     "acorn": "7.1.1",
-    "bunyan": "1.8.12",
+    "bunyan": "1.1.1",
     "chai": "4.2.0",
     "copyfiles": "2.2.0",
     "dirty-chai": "2.0.1",
+    "fx": "18.0.1",
     "intercept-stdout": "0.1.2",
     "jsdoc": "3.6.4",
     "lodash.template": "4.5.0",
