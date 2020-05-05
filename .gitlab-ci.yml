@@ -59,6 +59,7 @@ build-14:
 
 publish:
   stage: publish
+  image: node:14.1.0-alpine
   script:
     - *authenticate-to-npmjs
     - npm run make-distribution
