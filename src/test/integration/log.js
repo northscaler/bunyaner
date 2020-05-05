@@ -1,7 +1,7 @@
 'use strict'
 
 const bunyan = require('bunyan')
-const bunyaner = require('../../main')
+const bunyaner = require('../../..')
 
 const log = ({
   name,
