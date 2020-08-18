@@ -13,36 +13,16 @@ const DEFAULT_ERROR_KEY = 'isError'
 
 const resolveLevel = require('bunyan').resolveLevel
 
-const willLog = (levelName, logger) => {
+const loggingAt = (levelName, logger) => {
   return logger.level() <= resolveLevel(levelName)
 }
 
 /**
- * Returns a function that monkey patches a bunyan logger to give it log level methods
- * * that return a value (see below), and
- * * that allow the caller to provide a function in order to avoid expensive logging statements when the current log
- *   level is above the level of the log method invoked.
- *
- * ### Return values
- *
- * The value returned from the log level method is determined according to the following rules.
- * * If `typeof arguments[0]` is `'function'`, the return value of that function's invocation is returned.
- * * If `typeof arguments[0]` is `'string'` and is a [`util.format`](https://nodejs.org/api/util.html#util_util_format_format_args) string,
- *   * then the _second_ argument to the log level method is returned.
- *   * else, the formatted string is returned.
- * * Otherwise, `arguments[0]` is returned.
- *
- * ### Passing functions
- *
- * If the first argument is a function, it will be invoked with the remainder of the arguments given (the equivalent of `arguments[0](arguments.slice(1))`.
- * If the function returns an `Array`, then the array is passed as arguments to the log level method (the equivalent of `log.level.apply(log, theArray)`, where `level` is the log level method name.
- * If the function returns a non-`Array`, then that value is returned.
- *
- * ### Logging `Error`s
- *
- * If the first argument is `instanceof Error`, the bunyan's configured `err` serializer is used to log it, otherwise it is converted into a plain, old JavaScript object (using `Object.getOwnPropertyNames(error)`) and that value is logged.
- * In either case, there is a log record field added called `isError` (by default) and its value will be truthy.
- * If you don't want to include the `Error` `stack`, use your own `err` serializer with bunyan.
+ * Returns a function that monkey patches a bunyan logger to give it log level methods that
+ * * prevent conflicts with [bunyan's core fields](https://www.npmjs.com/package/bunyan#core-fields),
+ * * indicate that the logged object was an `Error`,
+ * * return a value, and
+ * * allow the caller to defer expensive evaluation when the current log level is below the level of the log method invoked.
  *
  * @param {object} arg0 The argument to be deconstructed
  * @param {object} arg0.bunyanLogger A [bunyan](https://www.npmjs.com/package/bunyan) logger.
@@ -80,9 +60,11 @@ const bunyaner = function ({
       let head = args[0]
       let type = typeof head
       let errorAsObject
+      let headWasFn
 
       if (type === 'function') {
-        if (!willLog(patcheMethodLevel, this)) return
+        headWasFn = true
+        if (!loggingAt(patcheMethodLevel, this)) return // don't evaluate anything if we're not logging at this level!
 
         args = head(...args.slice(1))
         args = Array.isArray(args) ? args : [args]
@@ -99,9 +81,9 @@ const bunyaner = function ({
               accum[next] = args[0][next]
               return accum
             }, {})
-          errorAsObject.name = head.name // add Error name for convenience
+          errorAsObject.name = head.name // add Error.name for convenience
         }
-        args[0] = errorAsObject
+        args = [errorAsObject, ...args.slice(1)]
       }
 
       if (type === 'symbol' || type === 'bigint' || args[0] === Infinity) {
@@ -114,7 +96,7 @@ const bunyaner = function ({
         if (head.indexOf('%') !== -1) { // then head may be a format string
           const formatted = util.format(head, args.slice(1))
           if (head !== formatted) { // then head was a format string
-            head = formatted // return the formatted value
+            head = args.length === 2 ? args[1] : args.slice(1) // return the second value if only one, else the rest
             args = [formatted]
           }
         } else {
@@ -128,7 +110,7 @@ const bunyaner = function ({
       }
 
       originalMethod(...args)
-      return head
+      return headWasFn ? undefined : head
     }
 
     bunyanLogger[level] = patchedMethod.bind(bunyanLogger)
