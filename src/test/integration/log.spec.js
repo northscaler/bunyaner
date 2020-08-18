@@ -8,7 +8,7 @@ const intercept = require('intercept-stdout')
 const bunyan = require('bunyan')
 const nodeMajorVersion = process.versions.node.split('.')[0]
 
-const getLog = require('./log.js')
+const getLog = require('./log')
 
 describe('integration tests of bunyaner', function () {
   let unintercept
@@ -85,6 +85,53 @@ describe('integration tests of bunyaner', function () {
     expect(json.isError).to.equal(true)
   })
 
+  it('should work with an Error object and a custom serializer that suppresses stack', function () {
+    const log = getLog({
+      bunyanLogger: bunyan.createLogger({
+        name: 'test',
+        serializers: {
+          err: e => {
+            const o = Object.getOwnPropertyNames(e).reduce((accum, next) => {
+              if (next !== 'stack') accum[next] = e[next]
+              return accum
+            }, {})
+            o.name = e.name
+            return o
+          }
+        }
+      })
+    })
+
+    const errorMessage = 'the error message'
+    const msg = 'Done blowed up'
+    const expected = {
+      name: 'Error',
+      message: errorMessage
+    }
+    const error = new Error(errorMessage)
+
+    const actual = log.error(error, msg)
+    expect(actual).to.equal(error)
+
+    const json = JSON.parse(stdout)
+    expect(json.payload).to.deep.equal(expected)
+    expect(json.msg).to.equal(msg)
+    expect(json.isError).to.equal(true)
+  })
+
+  it('should work with a non-conflicting object and a message', function () {
+    const expected = { foo: 'foo' }
+    const msg = 'I just set my foo'
+    const log = getLog()
+
+    const actual = log.info(expected, msg)
+    expect(actual).to.equal(expected)
+
+    const json = JSON.parse(stdout)
+    expect(json.payload).to.deep.equal(expected)
+    expect(json.msg).to.equal(msg)
+  })
+
   it('should work with a non-conflicting object', function () {
     const expected = { foo: 'foo' }
     const log = getLog()
@@ -101,10 +148,61 @@ describe('integration tests of bunyaner', function () {
     const log = getLog()
 
     const actual = log.info(() => expected)
+    expect(actual).to.equal(undefined)
+
+    const json = JSON.parse(stdout)
+    expect(json.payload).to.deep.equal(expected)
+  })
+
+  it('should work with a two objects', function () {
+    const expected = { foo: 'foo' }
+    const another = { bar: 'bar' }
+    const log = getLog()
+
+    const actual = log.info(expected, another)
     expect(actual).to.equal(expected)
 
     const json = JSON.parse(stdout)
     expect(json.payload).to.deep.equal(expected)
+    expect(json.msg).to.equal('{ bar: \'bar\' }')
+  })
+
+  it('should work with three objects', function () {
+    const expected = { foo: 'foo' }
+    const another = { bar: 'bar' }
+    const third = { three: 3 }
+    const log = getLog()
+
+    const actual = log.info(expected, another, third)
+    expect(actual).to.equal(expected)
+
+    const json = JSON.parse(stdout)
+    expect(json.payload).to.deep.equal(expected)
+    expect(json.msg).to.equal('{ bar: \'bar\' } { three: 3 }')
+  })
+
+  it('should work with a function returning a non-conflicting object in an array', function () {
+    const expected = { foo: 'foo' }
+    const log = getLog()
+
+    const actual = log.info(() => [expected])
+    expect(actual).to.equal(undefined)
+
+    const json = JSON.parse(stdout)
+    expect(json.payload).to.deep.equal(expected)
+  })
+
+  it('should work with a function returning a non-conflicting object and a message', function () {
+    const expected = { foo: 'foo' }
+    const message = 'a message'
+    const log = getLog()
+
+    const actual = log.info(() => [expected, message])
+    expect(actual).to.equal(undefined)
+
+    const json = JSON.parse(stdout)
+    expect(json.payload).to.deep.equal(expected)
+    expect(json.msg).to.equal(message)
   })
 
   it('should work with a function taking arguments returning a non-conflicting object', function () {
@@ -113,7 +211,7 @@ describe('integration tests of bunyaner', function () {
     const log = getLog()
 
     const actual = log.info(it => ({ foo: it }), value)
-    expect(actual).to.deep.equal(expected)
+    expect(actual).to.deep.equal(undefined)
 
     const json = JSON.parse(stdout)
     expect(json.payload).to.deep.equal(expected)
@@ -135,7 +233,7 @@ describe('integration tests of bunyaner', function () {
     const log = getLog()
 
     const actual = log.info(() => expected)
-    expect(actual).to.equal(expected)
+    expect(actual).to.equal(undefined)
 
     const json = JSON.parse(stdout)
     expect(json.payload).to.deep.equal(expected)
@@ -150,20 +248,36 @@ describe('integration tests of bunyaner', function () {
 
     const json = JSON.parse(stdout)
 
-    expect(json.msg).to.equal(expected)
+    expect(json.payload).to.equal(expected)
   })
 
-  it('should work with a formatting string', function () {
+  it('should work with a formatting string plus one argument', function () {
     const format = 'format %s'
     const object = { an: 'object' }
     const expected = nodeMajorVersion >= 12 ? 'format [ [Object] ]' : 'format [object Object]'
     const log = getLog()
 
     const actual = log.info(format, object)
-    expect(actual).to.equal(expected)
+    expect(actual).to.deep.equal(object)
 
     const json = JSON.parse(stdout)
     expect(json.msg).to.equal(expected)
+    expect(json.payload).to.equal(undefined)
+  })
+
+  it('should work with a formatting string plus multiple arguments', function () {
+    const format = 'format %s'
+    const object = { an: 'object' }
+    const object2 = { another: 'object' }
+    const expected = nodeMajorVersion >= 12 ? 'format [ [Object], [Object] ]' : 'format [object Object],[object Object]'
+    const log = getLog()
+
+    const actual = log.info(format, object, object2)
+    expect(actual).to.deep.equal([object, object2])
+
+    const json = JSON.parse(stdout)
+    expect(json.msg).to.equal(expected)
+    expect(json.payload).to.equal(undefined)
   })
 
   it('should work with multiple strings', function () {
@@ -184,7 +298,7 @@ describe('integration tests of bunyaner', function () {
     const log = getLog()
 
     const actual = log.info(() => strings)
-    expect(actual).to.equal(strings[0])
+    expect(actual).to.equal(undefined)
 
     const json = JSON.parse(stdout)
     expect(json.msg).to.equal(expected)
@@ -198,7 +312,7 @@ describe('integration tests of bunyaner', function () {
     const log = getLog()
 
     const actual = log.info(() => args)
-    expect(actual).to.equal(expected)
+    expect(actual).to.equal(undefined)
 
     const json = JSON.parse(stdout)
     expect(json.msg).to.equal(expected)
@@ -213,5 +327,90 @@ describe('integration tests of bunyaner', function () {
     expect(actual).to.equal(expected)
 
     expect(stdout).not.to.be.ok()
+  })
+
+  it('should only invoke the function when the log method is at or above the current log level', function () {
+    let i = 0
+    const msg = 'a message'
+    const msg2 = 'another message'
+
+    const log = getLog()
+    log.level('info')
+
+    let actual = log.debug(() => { // below
+      i++
+      return msg
+    })
+    expect(actual).to.equal(undefined)
+    expect(i).to.equal(0)
+    expect(stdout).not.to.be.ok()
+
+    actual = log.info(() => { // at
+      i++
+      return msg
+    })
+    expect(actual).to.equal(undefined)
+    expect(i).to.equal(1)
+    expect(JSON.parse(stdout).payload).to.equal(msg)
+
+    actual = log.warn(() => { // above
+      i++
+      return msg2
+    })
+    expect(actual).to.equal(undefined)
+    expect(i).to.equal(2)
+    expect(JSON.parse(stdout).payload).to.equal(msg2)
+  })
+
+  it('should return edge cases correctly', function () {
+    let expected
+    let actual
+    const log = getLog()
+    log.level('info')
+
+    expected = null
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = undefined
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = ''
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = ' '
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = true
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = false
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = NaN
+    actual = log.info(expected)
+    expect(actual).to.be.NaN()
+    expect(JSON.parse(stdout).payload).to.equal(null) // NaN is not part of the JSON spec
+
+    expected = Infinity
+    actual = log.info(expected)
+    expect(actual).to.equal(Infinity)
+    expect(JSON.parse(stdout).payload).to.equal('Infinity') // Infinity is not part of the JSON spec
+
+    expected = Symbol('foo')
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected.toString()) // bunyaner doesn't log Symbols, apparently
   })
 })
