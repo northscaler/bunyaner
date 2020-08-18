@@ -1,6 +1,6 @@
 {
   "name": "@northscaler/bunyaner",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "description": "Monkey-patches bunyan to have pretty neat log level methods",
   "repository": {
     "type": "git",
