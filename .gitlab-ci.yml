@@ -62,7 +62,9 @@ publish:
   image: node:14.1.0-alpine
   script:
     - *authenticate-to-npmjs
+    - npm install
     - npm run make-distribution
+    - npm prune --production
     - export RM_TMP_TAG=cicd-$(date +%s)
     - npm publish --access public --tag $RM_TMP_TAG
     - ./tag-nodejs
