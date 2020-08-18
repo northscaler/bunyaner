@@ -215,14 +215,15 @@ describe('integration tests of bunyaner', function () {
     expect(stdout).not.to.be.ok()
   })
 
-  it('should not invoke the function when the log method is below the current log level', function () {
+  it('should only invoke the function when the log method is at or above the current log level', function () {
     let i = 0
     const msg = 'a message'
+    const msg2 = 'another message'
 
     const log = getLog()
     log.level('info')
 
-    let actual = log.debug(() => {
+    let actual = log.debug(() => { // below
       i++
       return msg
     })
@@ -230,13 +231,21 @@ describe('integration tests of bunyaner', function () {
     expect(i).to.equal(0)
     expect(stdout).not.to.be.ok()
 
-    actual = log.info(() => {
+    actual = log.info(() => { // at
       i++
       return msg
     })
     expect(actual).to.equal(msg)
     expect(i).to.equal(1)
     expect(JSON.parse(stdout).payload).to.equal(msg)
+
+    actual = log.warn(() => { // above
+      i++
+      return msg2
+    })
+    expect(actual).to.equal(msg2)
+    expect(i).to.equal(2)
+    expect(JSON.parse(stdout).payload).to.equal(msg2)
   })
 
   it('should return edge cases correctly', function () {
