@@ -8,7 +8,7 @@ const intercept = require('intercept-stdout')
 const bunyan = require('bunyan')
 const nodeMajorVersion = process.versions.node.split('.')[0]
 
-const getLog = require('./log.js')
+const getLog = require('./log')
 
 describe('integration tests of bunyaner', function () {
   let unintercept
@@ -150,7 +150,7 @@ describe('integration tests of bunyaner', function () {
 
     const json = JSON.parse(stdout)
 
-    expect(json.msg).to.equal(expected)
+    expect(json.payload).to.equal(expected)
   })
 
   it('should work with a formatting string', function () {
@@ -213,5 +213,81 @@ describe('integration tests of bunyaner', function () {
     expect(actual).to.equal(expected)
 
     expect(stdout).not.to.be.ok()
+  })
+
+  it('should not invoke the function when the log method is below the current log level', function () {
+    let i = 0
+    const msg = 'a message'
+
+    const log = getLog()
+    log.level('info')
+
+    let actual = log.debug(() => {
+      i++
+      return msg
+    })
+    expect(actual).to.equal(undefined)
+    expect(i).to.equal(0)
+    expect(stdout).not.to.be.ok()
+
+    actual = log.info(() => {
+      i++
+      return msg
+    })
+    expect(actual).to.equal(msg)
+    expect(i).to.equal(1)
+    expect(JSON.parse(stdout).payload).to.equal(msg)
+  })
+
+  it('should return edge cases correctly', function () {
+    let expected
+    let actual
+    const log = getLog()
+    log.level('info')
+
+    expected = null
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = undefined
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = ''
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = ' '
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = true
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = false
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected)
+
+    expected = NaN
+    actual = log.info(expected)
+    expect(actual).to.be.NaN()
+    expect(JSON.parse(stdout).payload).to.equal(null) // NaN is not part of the JSON spec
+
+    expected = Infinity
+    actual = log.info(expected)
+    expect(actual).to.equal(Infinity)
+    expect(JSON.parse(stdout).payload).to.equal('Infinity') // Infinity is not part of the JSON spec
+
+    expected = Symbol('foo')
+    actual = log.info(expected)
+    expect(actual).to.equal(expected)
+    expect(JSON.parse(stdout).payload).to.equal(expected.toString()) // bunyaner doesn't log Symbols, apparently
   })
 })

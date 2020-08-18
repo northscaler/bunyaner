@@ -11,6 +11,12 @@ const CORE_FIELDS = ['v', 'level', 'name', 'hostname', 'pid', 'time', 'msg', 'sr
 const DEFAULT_PAYLOAD_KEY = 'payload'
 const DEFAULT_ERROR_KEY = 'isError'
 
+const resolveLevel = require('bunyan').resolveLevel
+
+const willLog = (levelName, logger) => {
+  return logger.level() <= resolveLevel(levelName)
+}
+
 /**
  * Returns a function that monkey patches a bunyan logger to give it log level methods
  * * that return a value (see below), and
@@ -21,8 +27,10 @@ const DEFAULT_ERROR_KEY = 'isError'
  *
  * The value returned from the log level method is determined according to the following rules.
  * * If `typeof arguments[0]` is `'function'`, the return value of that function's invocation is returned.
- * * If `typeof arguments[0]` is `'string'` and is a [`util.format`](https://nodejs.org/api/util.html#util_util_format_format_args) string, then the _second_ argument to the log level method is returned.
- * * Otherwise, the formatted string is returned.
+ * * If `typeof arguments[0]` is `'string'` and is a [`util.format`](https://nodejs.org/api/util.html#util_util_format_format_args) string,
+ *   * then the _second_ argument to the log level method is returned.
+ *   * else, the formatted string is returned.
+ * * Otherwise, `arguments[0]` is returned.
  *
  * ### Passing functions
  *
@@ -68,43 +76,55 @@ const bunyaner = function ({
     const originalMethod = bunyanLogger[level].bind(bunyanLogger)
 
     const patchedMethod = function (...args) {
+      const patcheMethodLevel = level
       let head = args[0]
+      let type = typeof head
+      let errorAsObject
 
-      if (typeof head === 'function') {
+      if (type === 'function') {
+        if (!willLog(patcheMethodLevel, this)) return
+
         args = head(...args.slice(1))
-        if (!Array.isArray(args)) {
-          args = [args]
-        }
+        args = Array.isArray(args) ? args : [args]
         head = args[0]
+        type = typeof head
       }
 
-      let eo
       if (head instanceof Error) {
         if (bunyanLogger.serializers && bunyanLogger.serializers.err) {
-          eo = bunyanLogger.serializers.err(args[0])
+          errorAsObject = bunyanLogger.serializers.err(args[0])
         } else {
-          eo = Object.getOwnPropertyNames(args[0])
+          errorAsObject = Object.getOwnPropertyNames(args[0])
             .reduce((accum, next) => {
               accum[next] = args[0][next]
               return accum
             }, {})
-          eo.name = head.name // add Error name for convenience
+          errorAsObject.name = head.name // add Error name for convenience
         }
-        args[0] = eo
+        args[0] = errorAsObject
       }
 
-      if (typeof args[0] === 'object') {
+      if (type === 'symbol' || type === 'bigint' || args[0] === Infinity) {
+        args[0] = { [payloadKey]: args[0].toString() }
+      } else if (type === 'object' || type === 'boolean' || type === 'number') {
         args[0] = { [payloadKey]: args[0] }
-      } else if (typeof head === 'string' && head.indexOf('%') !== -1) { // then may be a format string
-        const formatted = util.format(head, args.slice(1))
-        if (head !== formatted) { // then first was a format string
-          head = formatted // return the formatted value
-          args = [formatted]
+      }
+
+      if (type === 'string') {
+        if (head.indexOf('%') !== -1) { // then head may be a format string
+          const formatted = util.format(head, args.slice(1))
+          if (head !== formatted) { // then head was a format string
+            head = formatted // return the formatted value
+            args = [formatted]
+          }
+        } else {
+          if (args.length > 1) args = [args.join(' ')]
+          else args[0] = { [payloadKey]: args[0] }
         }
       }
 
-      if (eo || alwaysShowErrorIndicator) {
-        args[0][errorIndicatorKey] = !!eo
+      if (errorAsObject || alwaysShowErrorIndicator) {
+        args[0][errorIndicatorKey] = !!errorAsObject
       }
 
       originalMethod(...args)
