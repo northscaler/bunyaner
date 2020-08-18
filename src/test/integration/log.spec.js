@@ -269,7 +269,7 @@ describe('integration tests of bunyaner', function () {
     const format = 'format %s'
     const object = { an: 'object' }
     const object2 = { another: 'object' }
-    const expected = nodeMajorVersion >= 12 ? 'format [ [Object] ],[ [Object] ]' : 'format [object Object],[object Object]'
+    const expected = nodeMajorVersion >= 12 ? 'format [ [Object], [Object] ]' : 'format [object Object],[object Object]'
     const log = getLog()
 
     const actual = log.info(format, object, object2)
