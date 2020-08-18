@@ -6,8 +6,6 @@ Make [bunyan](https://www.npmjs.com/package/bunyan)'s log level methods much mo'
 * No worries about having your logged objects conflict with [bunyan's core fields](https://www.npmjs.com/package/bunyan#core-fields).
 * Allow log level methods to support functions in order to defer expensive log statements if the log method's level is below the currently configured log level.
 
->NB: Git repo of truth is https://gitlab.com/northscaler-public/bunyaner; all others are mirrors.
-
 ## TL;DR
 Install `bunyan` & `@northscaler/bunyaner`:
 ```bash
@@ -18,7 +16,7 @@ Create a file that your module will use to get a logger:
 ```javascript
 // log.js
 const bunyan = require('bunyan')
-const bunyaner = require('bunyaner')
+const bunyaner = require('@northscaler/bunyaner')
 
 module.exports = bunyaner({ bunyanLogger: bunyan.createLogger({ name: 'my-logger' }) })
 ```
